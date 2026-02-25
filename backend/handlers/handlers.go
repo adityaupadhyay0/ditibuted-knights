@@ -9,10 +9,12 @@ import (
 	"github.com/user/infratwin/backend/graph"
 	"github.com/user/infratwin/backend/k8s"
 	"github.com/user/infratwin/backend/parser"
+	"github.com/user/infratwin/backend/simulation"
 )
 
 type AnalyzeRequest struct {
-	TerraformCode string `json:"terraformCode"`
+	TerraformCode    string                      `json:"terraformCode"`
+	SimulationParams *simulation.SimulationParams `json:"simulationParams"`
 }
 
 func AnalyzeHandler(c *gin.Context) {
@@ -45,9 +47,15 @@ func AnalyzeHandler(c *gin.Context) {
 	infraGraph := graph.BuildGraph(config)
 	manifests := k8s.GenerateManifests(config)
 
+	var simResult *simulation.SimulationResult
+	if req.SimulationParams != nil {
+		simResult = simulation.RunSimulation(config, infraGraph, req.SimulationParams)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"graph":     infraGraph,
-		"manifests": manifests,
-		"config":    config,
+		"graph":      infraGraph,
+		"manifests":  manifests,
+		"config":     config,
+		"simulation": simResult,
 	})
 }

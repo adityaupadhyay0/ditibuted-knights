@@ -1,10 +1,10 @@
 # Future Upgrades & Roadmap
 
 ## Phase 2 – Deterministic Load Simulation
-- [ ] **Simplified Latency Model**: Implement a model to predict latency between nodes in the graph.
-- [ ] **CPU/Memory Saturation Modeling**: Simulate resource pressure based on traffic patterns.
-- [ ] **Basic Autoscaling Simulation**: Predict when K8s Horizontal Pod Autoscalers (HPA) would trigger.
-- [ ] **Traffic Injection**: Allow users to define traffic patterns in the UI to see impact on the graph.
+- [x] **Simplified Latency Model**: Implement a model to predict latency between nodes in the graph.
+- [x] **CPU/Memory Saturation Modeling**: Simulate resource pressure based on traffic patterns.
+- [x] **Basic Autoscaling Simulation**: Predict when K8s Horizontal Pod Autoscalers (HPA) would trigger.
+- [x] **Traffic Injection**: Allow users to define traffic patterns in the UI to see impact on the graph.
 
 ## Phase 3 – Failure & Edge Modeling
 - [ ] **Zone Outage Simulation**: Simulate the impact of an entire availability zone going down.

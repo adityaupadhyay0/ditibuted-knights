@@ -10,15 +10,17 @@ import (
 )
 
 type Resource struct {
-	Type         string   `json:"type"`
-	Name         string   `json:"name"`
-	Dependencies []string `json:"dependencies"`
+	Type         string            `json:"type"`
+	Name         string            `json:"name"`
+	Dependencies []string          `json:"dependencies"`
+	Metadata     map[string]string `json:"metadata"`
 }
 
 type Module struct {
-	Name         string   `json:"name"`
-	Source       string   `json:"source"`
-	Dependencies []string `json:"dependencies"`
+	Name         string            `json:"name"`
+	Source       string            `json:"source"`
+	Dependencies []string          `json:"dependencies"`
+	Metadata     map[string]string `json:"metadata"`
 }
 
 type InfraConfig struct {
@@ -69,20 +71,35 @@ func processFile(file *hcl.File) ([]Resource, []Module, error) {
 	for _, block := range content.Blocks {
 		if block.Type == "resource" {
 			res := Resource{
-				Type: block.Labels[0],
-				Name: block.Labels[1],
+				Type:     block.Labels[0],
+				Name:     block.Labels[1],
+				Metadata: make(map[string]string),
 			}
 			res.Dependencies = extractDependencies(block.Body)
+			attrs, _ := block.Body.JustAttributes()
+			for name, attr := range attrs {
+				val, _ := attr.Expr.Value(nil)
+				if val.Type().IsPrimitiveType() {
+					res.Metadata[name] = val.AsString()
+				}
+			}
 			resources = append(resources, res)
 		} else if block.Type == "module" {
 			mod := Module{
-				Name: block.Labels[0],
+				Name:     block.Labels[0],
+				Metadata: make(map[string]string),
 			}
 			// Extract source from module body
 			attrs, _ := block.Body.JustAttributes()
 			if attr, ok := attrs["source"]; ok {
 				val, _ := attr.Expr.Value(nil)
 				mod.Source = val.AsString()
+			}
+			for name, attr := range attrs {
+				val, _ := attr.Expr.Value(nil)
+				if !val.IsNull() && val.IsKnown() && val.Type().IsPrimitiveType() {
+					mod.Metadata[name] = val.AsString()
+				}
 			}
 			mod.Dependencies = extractDependencies(block.Body)
 			modules = append(modules, mod)
