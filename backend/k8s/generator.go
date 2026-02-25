@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/user/infratwin/backend/parser"
+	"github.com/user/distributed-knights/backend/parser"
 )
 
 func GenerateManifests(config *parser.InfraConfig) string {

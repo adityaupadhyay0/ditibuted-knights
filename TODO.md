@@ -1,19 +1,19 @@
-# Future Upgrades & Roadmap
+# Future Campaigns & Quest Log
 
-## Phase 2 – Deterministic Load Simulation
-- [x] **Simplified Latency Model**: Implement a model to predict latency between nodes in the graph.
-- [x] **CPU/Memory Saturation Modeling**: Simulate resource pressure based on traffic patterns.
-- [x] **Basic Autoscaling Simulation**: Predict when K8s Horizontal Pod Autoscalers (HPA) would trigger.
-- [x] **Traffic Injection**: Allow users to define traffic patterns in the UI to see impact on the graph.
+## Phase 2 – Deterministic Messenger Simulation
+- [x] **Simplified Latency Model**: Predict delay between strongholds in the realm.
+- [x] **Garrison Saturation Modeling**: Simulate resource pressure based on messenger patterns.
+- [x] **Basic Battalions Simulation**: Predict when K8s HPA would summon more reinforcements.
+- [x] **Messenger Injection**: Allow users to define messenger patterns to see impact on the realm.
 
-## Phase 3 – Failure & Edge Modeling
-- [x] **Zone Outage Simulation**: Simulate the impact of an entire availability zone going down.
-- [x] **Network Partition Simulation**: Model split-brain scenarios.
-- [ ] **Edge Node Latency Validation**: Integrate real-world latency measurements from edge agents.
-- [x] **Chaos Engineering Integration**: Trigger failure events directly from the dashboard.
+## Phase 3 – Siege & Edge Modeling
+- [x] **Realm Outage Simulation**: Simulate the impact of an entire availability zone falling.
+- [x] **Network Partition Simulation**: Model split-realm scenarios.
+- [ ] **Edge Stronghold Latency Validation**: Integrate real-world latency measurements from edge scouts.
+- [x] **Siege Engineering Integration**: Trigger assault events directly from the War Map.
 
 ## Technical Improvements
-- [ ] **Persistent Storage**: Integrate PostgreSQL for metadata and TimescaleDB for simulation metrics.
-- [ ] **NATS/Kafka Integration**: Scale the simulation plane using a distributed message bus.
-- [ ] **Advanced HCL Parsing**: Support more complex Terraform expressions and remote modules.
-- [ ] **Real-world Validation**: Compare simulation results with actual production metrics (drift detection).
+- [x] **The Chronicles**: Integrate PostgreSQL for metadata and TimescaleDB for campaign metrics.
+- [x] **The Messenger's Guild**: Scale the campaign plane using a distributed message bus (NATS/Kafka).
+- [ ] **Advanced Architectural Parsing**: Support more complex Decree expressions and remote modules.
+- [x] **The Mirror Realm**: Compare campaign results with actual production metrics (drift detection).

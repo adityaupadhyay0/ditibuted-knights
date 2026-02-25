@@ -6,10 +6,26 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/user/infratwin/backend/handlers"
+	"github.com/user/distributed-knights/backend/db"
+	"github.com/user/distributed-knights/backend/handlers"
+	"github.com/user/distributed-knights/backend/messenger"
 )
 
 func main() {
+	// Initialize Database (The Chronicles)
+	db.InitDB()
+
+	// Initialize NATS (The Messenger's Guild)
+	messenger.InitNATS()
+
+	if os.Getenv("WORKER_MODE") == "true" {
+		messenger.StartWorker()
+		select {} // Block forever
+	}
+
+	// Also start a local worker for convenience in single-container mode
+	go messenger.StartWorker()
+
 	r := gin.Default()
 
 	// Configure CORS
@@ -21,6 +37,8 @@ func main() {
 	}))
 
 	r.POST("/analyze", handlers.AnalyzeHandler)
+	r.GET("/campaigns", handlers.ListCampaignsHandler)
+	r.GET("/campaigns/:id", handlers.GetCampaignHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {

@@ -7,6 +7,11 @@ services:
     environment:
       - PORT=8080
       - GIN_MODE=release
+      - DB_URL=postgres://postgres:knights_secret@db:5432/distributed_knights?sslmode=disable
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - db
+      - nats
 
   frontend:
     build:
@@ -17,3 +22,33 @@ services:
       - VITE_API_URL=http://localhost:8080
     depends_on:
       - backend
+
+  db:
+    image: timescale/timescaledb:latest-pg15
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=knights_secret
+      - POSTGRES_DB=distributed_knights
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  nats:
+    image: nats:latest
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+
+  worker:
+    build:
+      context: ./backend
+    environment:
+      - DB_URL=postgres://postgres:knights_secret@db:5432/distributed_knights?sslmode=disable
+      - NATS_URL=nats://nats:4222
+      - WORKER_MODE=true
+    depends_on:
+      - db
+      - nats
+
+volumes:
+  db_data:

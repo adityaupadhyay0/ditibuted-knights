@@ -1,7 +1,7 @@
 package graph
 
 import (
-	"github.com/user/infratwin/backend/parser"
+	"github.com/user/distributed-knights/backend/parser"
 )
 
 type Node struct {
