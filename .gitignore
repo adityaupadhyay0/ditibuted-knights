@@ -1,0 +1,12 @@
+# Go
+backend/main
+backend/backend
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS
+.DS_Store
+*.log
