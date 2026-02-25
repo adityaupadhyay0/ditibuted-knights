@@ -3,11 +3,11 @@ package simulation
 import (
 	"testing"
 
-	"github.com/user/infratwin/backend/graph"
-	"github.com/user/infratwin/backend/parser"
+	"github.com/user/distributed-knights/backend/graph"
+	"github.com/user/distributed-knights/backend/parser"
 )
 
-func TestRunSimulation(t *testing.T) {
+func TestRunCampaign(t *testing.T) {
 	config := &parser.InfraConfig{
 		Resources: []parser.Resource{
 			{Type: "aws_vpc", Name: "main"},
@@ -16,14 +16,14 @@ func TestRunSimulation(t *testing.T) {
 	}
 	g := graph.BuildGraph(config)
 
-	params := &SimulationParams{
+	params := &CampaignParams{
 		DurationSeconds: 5,
-		Traffic: []TrafficPattern{
+		Traffic: []MessengerPattern{
 			{NodeID: "aws_subnet.sub", RequestsPerSec: 200},
 		},
 	}
 
-	result := RunSimulation(config, g, params)
+	result := RunCampaign(config, g, params)
 
 	if len(result.Timeline) != 5 {
 		t.Errorf("expected 5 timestamps, got %d", len(result.Timeline))
@@ -45,7 +45,7 @@ func TestRunSimulation(t *testing.T) {
 	}
 }
 
-func TestSimulationFailures(t *testing.T) {
+func TestCampaignFailures(t *testing.T) {
 	config := &parser.InfraConfig{
 		Resources: []parser.Resource{
 			{Type: "aws_vpc", Name: "main"},
@@ -54,14 +54,14 @@ func TestSimulationFailures(t *testing.T) {
 	}
 	g := graph.BuildGraph(config)
 
-	params := &SimulationParams{
+	params := &CampaignParams{
 		DurationSeconds: 10,
-		Traffic: []TrafficPattern{
+		Traffic: []MessengerPattern{
 			{NodeID: "aws_subnet.sub", RequestsPerSec: 100},
 		},
-		Failures: []FailureEvent{
+		Failures: []SiegeEvent{
 			{
-				Type: FailureNodeOutage,
+				Type: SiegeDragonStrike,
 				NodeID: "aws_vpc.main",
 				StartTime: 3,
 				EndTime: 6,
@@ -69,20 +69,20 @@ func TestSimulationFailures(t *testing.T) {
 		},
 	}
 
-	result := RunSimulation(config, g, params)
+	result := RunCampaign(config, g, params)
 
 	// At T=0, VPC should be UP
-	if result.Timeline[0].Nodes["aws_vpc.main"].Status != StatusUp {
+	if result.Timeline[0].Nodes["aws_vpc.main"].Status != StatusStanding {
 		t.Errorf("expected VPC to be UP at T=0")
 	}
 
 	// At T=4, VPC should be DOWN
-	if result.Timeline[4].Nodes["aws_vpc.main"].Status != StatusDown {
+	if result.Timeline[4].Nodes["aws_vpc.main"].Status != StatusFallen {
 		t.Errorf("expected VPC to be DOWN at T=4")
 	}
 
 	// At T=4, Subnet should be DEGRADED because its dependency (VPC) is down
-	if result.Timeline[4].Nodes["aws_subnet.sub"].Status != StatusDegraded {
+	if result.Timeline[4].Nodes["aws_subnet.sub"].Status != StatusBesieged {
 		t.Errorf("expected Subnet to be DEGRADED at T=4, got %s", result.Timeline[4].Nodes["aws_subnet.sub"].Status)
 	}
 
@@ -91,7 +91,7 @@ func TestSimulationFailures(t *testing.T) {
 	}
 
 	// At T=8, VPC should be UP again
-	if result.Timeline[8].Nodes["aws_vpc.main"].Status != StatusUp {
+	if result.Timeline[8].Nodes["aws_vpc.main"].Status != StatusStanding {
 		t.Errorf("expected VPC to be UP at T=8")
 	}
 }

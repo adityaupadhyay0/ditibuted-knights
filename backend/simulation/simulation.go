@@ -3,70 +3,85 @@ package simulation
 import (
 	"math"
 
-	"github.com/user/infratwin/backend/graph"
-	"github.com/user/infratwin/backend/parser"
+	"github.com/user/distributed-knights/backend/graph"
+	"github.com/user/distributed-knights/backend/parser"
 )
 
-type FailureType string
+type SiegeType string
 
 const (
-	FailureNodeOutage      FailureType = "node_outage"
-	FailureNetworkPartition FailureType = "network_partition"
+	SiegeDragonStrike     SiegeType = "dragon_strike"      // Node outage
+	SiegeNetworkPartition SiegeType = "network_partition"  // Network split
+	SiegePlague           SiegeType = "plague"            // Cascading errors
+	SiegeFamine           SiegeType = "famine"            // Resource exhaustion
 )
 
-type FailureEvent struct {
-	Type      FailureType `json:"type"`
-	NodeID    string      `json:"nodeId"`
-	TargetID  string      `json:"targetId,omitempty"` // For network partitions
-	StartTime int         `json:"startTime"`
-	EndTime   int         `json:"endTime"`
+type WeatherCondition string
+
+const (
+	WeatherClear  WeatherCondition = "clear"
+	WeatherStorm  WeatherCondition = "storm" // Increases latency
+	WeatherFog    WeatherCondition = "fog"   // Increases error rate
+	WeatherBlizzard WeatherCondition = "blizzard" // Severe latency and errors
+)
+
+type SiegeEvent struct {
+	Type      SiegeType `json:"type"`
+	NodeID    string    `json:"nodeId"`
+	TargetID  string    `json:"targetId,omitempty"` // For network partitions
+	StartTime int       `json:"startTime"`
+	EndTime   int       `json:"endTime"`
 }
 
-type TrafficPattern struct {
+type MessengerPattern struct {
 	NodeID         string  `json:"nodeId"`
 	RequestsPerSec float64 `json:"rps"`
 }
 
-type SimulationParams struct {
-	DurationSeconds int              `json:"durationSeconds"`
-	Traffic         []TrafficPattern `json:"traffic"`
-	Failures        []FailureEvent   `json:"failures"`
+type CampaignParams struct {
+	DurationSeconds int                `json:"durationSeconds"`
+	Traffic         []MessengerPattern `json:"traffic"`
+	Failures        []SiegeEvent       `json:"failures"`
+	Weather         WeatherCondition   `json:"weather"`
 }
 
-type SimulationResult struct {
+type CampaignResult struct {
 	Timeline []TimestampResult `json:"timeline"`
+	Scrolls  []string          `json:"scrolls"` // Scribe flavor text
 }
 
 type TimestampResult struct {
-	Timestamp int                     `json:"timestamp"`
+	Timestamp int                    `json:"timestamp"`
 	Nodes     map[string]NodeMetrics `json:"nodes"`
+	Events    []string               `json:"events"` // Significant events at this step
 }
 
-type NodeStatus string
+type StrongholdStatus string
 
 const (
-	StatusUp       NodeStatus = "up"
-	StatusDown     NodeStatus = "down"
-	StatusDegraded NodeStatus = "degraded"
+	StatusStanding StrongholdStatus = "up"
+	StatusFallen   StrongholdStatus = "down"
+	StatusBesieged StrongholdStatus = "degraded"
 )
 
 type NodeMetrics struct {
-	CPUUsage    float64    `json:"cpuUsage"`    // Percentage 0-100
-	MemoryUsage float64    `json:"memoryUsage"` // Percentage 0-100
-	Latency     float64    `json:"latency"`     // Milliseconds
-	Replicas    int        `json:"replicas"`
-	Requests    float64    `json:"requests"`    // Requests handled at this node
-	ErrorRate   float64    `json:"errorRate"`   // Percentage 0-100
-	Status      NodeStatus `json:"status"`
+	CPUUsage    float64          `json:"cpuUsage"`    // Percentage 0-100
+	MemoryUsage float64          `json:"memoryUsage"` // Percentage 0-100
+	Latency     float64          `json:"latency"`     // Milliseconds
+	Replicas    int              `json:"replicas"`
+	Requests    float64          `json:"requests"`    // Requests handled at this node
+	ErrorRate   float64          `json:"errorRate"`   // Percentage 0-100
+	Status      StrongholdStatus `json:"status"`
 }
 
-func RunSimulation(config *parser.InfraConfig, g *graph.Graph, params *SimulationParams) *SimulationResult {
+func RunCampaign(config *parser.InfraConfig, g *graph.Graph, params *CampaignParams) *CampaignResult {
 	if params.DurationSeconds <= 0 {
 		params.DurationSeconds = 10
 	}
 
-	result := &SimulationResult{
+	result := &CampaignResult{
 		Timeline: make([]TimestampResult, params.DurationSeconds),
+		Scrolls:  []string{"Hear ye, hear ye! A new campaign begins in the realm of Distributed Knights!"},
 	}
 
 	// Initialize state
@@ -102,19 +117,33 @@ func RunSimulation(config *parser.InfraConfig, g *graph.Graph, params *Simulatio
 
 		// 0. Reset status and error rate
 		for id := range nodeState {
-			nodeState[id].Status = StatusUp
+			nodeState[id].Status = StatusStanding
 			nodeState[id].ErrorRate = 0
 		}
 
-		// 0.1 Apply active failures
+		// 0.1 Apply active failures (Siege Events)
 		activeFailures := make(map[string]bool)
+		stepEvents := []string{}
 		for _, f := range params.Failures {
+			if t == f.StartTime {
+				msg := scribeEvent(f)
+				stepEvents = append(stepEvents, msg)
+				result.Scrolls = append(result.Scrolls, msg)
+			}
+
 			if t >= f.StartTime && t <= f.EndTime {
-				if f.Type == FailureNodeOutage {
-					if state, ok := nodeState[f.NodeID]; ok {
-						state.Status = StatusDown
+				if state, ok := nodeState[f.NodeID]; ok {
+					switch f.Type {
+					case SiegeDragonStrike:
+						state.Status = StatusFallen
 						state.ErrorRate = 100
 						activeFailures[f.NodeID] = true
+					case SiegePlague:
+						state.Status = StatusBesieged
+						state.ErrorRate = math.Max(state.ErrorRate, 40)
+					case SiegeFamine:
+						state.Status = StatusBesieged
+						state.CPUUsage = math.Max(state.CPUUsage, 90)
 					}
 				}
 			}
@@ -123,7 +152,7 @@ func RunSimulation(config *parser.InfraConfig, g *graph.Graph, params *Simulatio
 		// 1. Inject traffic
 		for _, tp := range params.Traffic {
 			if state, ok := nodeState[tp.NodeID]; ok {
-				if state.Status != StatusDown {
+				if state.Status != StatusFallen {
 					state.Requests += tp.RequestsPerSec
 				}
 			}
@@ -136,7 +165,7 @@ func RunSimulation(config *parser.InfraConfig, g *graph.Graph, params *Simulatio
 		for _, node := range g.Nodes {
 			state := nodeState[node.ID]
 
-			if state.Status == StatusDown {
+			if state.Status == StatusFallen {
 				state.CPUUsage = 0
 				state.Latency = 0
 				state.Requests = 0
@@ -152,12 +181,26 @@ func RunSimulation(config *parser.InfraConfig, g *graph.Graph, params *Simulatio
 				state.CPUUsage = 0
 			}
 
+			// Weather impact
+			weatherLatencyMod := 1.0
+			weatherErrorMod := 0.0
+			switch params.Weather {
+			case WeatherStorm:
+				weatherLatencyMod = 2.5
+			case WeatherFog:
+				weatherErrorMod = 5.0
+			case WeatherBlizzard:
+				weatherLatencyMod = 5.0
+				weatherErrorMod = 15.0
+			}
+
 			if state.CPUUsage > 100 {
 				state.CPUUsage = 100 + (state.CPUUsage-100)*0.1 // Saturated
 			}
 
 			// Latency heuristic: base 10ms + exponential increase with load
-			state.Latency = 10 + math.Pow(state.CPUUsage/20, 2)
+			state.Latency = (10 + math.Pow(state.CPUUsage/20, 2)) * weatherLatencyMod
+			state.ErrorRate = math.Max(state.ErrorRate, weatherErrorMod)
 
 			// Memory heuristic: 20% base + 0.5% per RPS per replica
 			state.MemoryUsage = 20 + (state.Requests/float64(state.Replicas))*0.5
@@ -181,13 +224,29 @@ func RunSimulation(config *parser.InfraConfig, g *graph.Graph, params *Simulatio
 		result.Timeline[t] = TimestampResult{
 			Timestamp: t,
 			Nodes:     currentMetrics,
+			Events:    stepEvents,
 		}
 	}
 
 	return result
 }
 
-func propagateTrafficAndFailures(g *graph.Graph, nodeState map[string]*NodeMetrics, activeFailures map[string]bool, failures []FailureEvent, t int) {
+func scribeEvent(f SiegeEvent) string {
+	switch f.Type {
+	case SiegeDragonStrike:
+		return "A dragon has descended upon " + f.NodeID + "! The stronghold has fallen!"
+	case SiegeNetworkPartition:
+		return "A great rift has opened between " + f.NodeID + " and " + f.TargetID + "! Messengers cannot pass!"
+	case SiegePlague:
+		return "A mysterious plague is spreading through the garrison of " + f.NodeID + ". Chaos ensues!"
+	case SiegeFamine:
+		return "Rations are running low at " + f.NodeID + ". The battalions are exhausted!"
+	default:
+		return "An unknown calamity has struck " + f.NodeID + "!"
+	}
+}
+
+func propagateTrafficAndFailures(g *graph.Graph, nodeState map[string]*NodeMetrics, activeFailures map[string]bool, failures []SiegeEvent, t int) {
 	inDegree := make(map[string]int)
 	dependsOn := make(map[string][]string)
 	for _, node := range g.Nodes {
@@ -217,7 +276,7 @@ func propagateTrafficAndFailures(g *graph.Graph, nodeState map[string]*NodeMetri
 			// Check for network partition
 			isPartitioned := false
 			for _, f := range failures {
-				if f.Type == FailureNetworkPartition && t >= f.StartTime && t <= f.EndTime {
+				if f.Type == SiegeNetworkPartition && t >= f.StartTime && t <= f.EndTime {
 					if (f.NodeID == curr && f.TargetID == dep) || (f.NodeID == dep && f.TargetID == curr) {
 						isPartitioned = true
 						break
@@ -227,11 +286,11 @@ func propagateTrafficAndFailures(g *graph.Graph, nodeState map[string]*NodeMetri
 
 			if isPartitioned {
 				currState.ErrorRate = math.Max(currState.ErrorRate, 50) // Partial failure
-				currState.Status = StatusDegraded
-			} else if depState.Status == StatusDown {
+				currState.Status = StatusBesieged
+			} else if depState.Status == StatusFallen {
 				// Dependency is down, so current node fails
 				currState.ErrorRate = math.Max(currState.ErrorRate, 80) // High error rate
-				currState.Status = StatusDegraded
+				currState.Status = StatusBesieged
 			} else {
 				// Propagate traffic
 				depState.Requests += currState.Requests
