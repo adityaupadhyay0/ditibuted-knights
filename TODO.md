@@ -7,10 +7,10 @@
 - [x] **Traffic Injection**: Allow users to define traffic patterns in the UI to see impact on the graph.
 
 ## Phase 3 – Failure & Edge Modeling
-- [ ] **Zone Outage Simulation**: Simulate the impact of an entire availability zone going down.
-- [ ] **Network Partition Simulation**: Model split-brain scenarios.
+- [x] **Zone Outage Simulation**: Simulate the impact of an entire availability zone going down.
+- [x] **Network Partition Simulation**: Model split-brain scenarios.
 - [ ] **Edge Node Latency Validation**: Integrate real-world latency measurements from edge agents.
-- [ ] **Chaos Engineering Integration**: Trigger failure events directly from the dashboard.
+- [x] **Chaos Engineering Integration**: Trigger failure events directly from the dashboard.
 
 ## Technical Improvements
 - [ ] **Persistent Storage**: Integrate PostgreSQL for metadata and TimescaleDB for simulation metrics.

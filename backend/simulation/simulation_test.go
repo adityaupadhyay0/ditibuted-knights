@@ -44,3 +44,54 @@ func TestRunSimulation(t *testing.T) {
 		t.Errorf("expected VPC to scale up from 200 RPS, got %d replicas", vpcMetrics.Replicas)
 	}
 }
+
+func TestSimulationFailures(t *testing.T) {
+	config := &parser.InfraConfig{
+		Resources: []parser.Resource{
+			{Type: "aws_vpc", Name: "main"},
+			{Type: "aws_subnet", Name: "sub", Dependencies: []string{"aws_vpc.main"}},
+		},
+	}
+	g := graph.BuildGraph(config)
+
+	params := &SimulationParams{
+		DurationSeconds: 10,
+		Traffic: []TrafficPattern{
+			{NodeID: "aws_subnet.sub", RequestsPerSec: 100},
+		},
+		Failures: []FailureEvent{
+			{
+				Type: FailureNodeOutage,
+				NodeID: "aws_vpc.main",
+				StartTime: 3,
+				EndTime: 6,
+			},
+		},
+	}
+
+	result := RunSimulation(config, g, params)
+
+	// At T=0, VPC should be UP
+	if result.Timeline[0].Nodes["aws_vpc.main"].Status != StatusUp {
+		t.Errorf("expected VPC to be UP at T=0")
+	}
+
+	// At T=4, VPC should be DOWN
+	if result.Timeline[4].Nodes["aws_vpc.main"].Status != StatusDown {
+		t.Errorf("expected VPC to be DOWN at T=4")
+	}
+
+	// At T=4, Subnet should be DEGRADED because its dependency (VPC) is down
+	if result.Timeline[4].Nodes["aws_subnet.sub"].Status != StatusDegraded {
+		t.Errorf("expected Subnet to be DEGRADED at T=4, got %s", result.Timeline[4].Nodes["aws_subnet.sub"].Status)
+	}
+
+	if result.Timeline[4].Nodes["aws_subnet.sub"].ErrorRate < 50 {
+		t.Errorf("expected Subnet to have high error rate at T=4, got %f", result.Timeline[4].Nodes["aws_subnet.sub"].ErrorRate)
+	}
+
+	// At T=8, VPC should be UP again
+	if result.Timeline[8].Nodes["aws_vpc.main"].Status != StatusUp {
+		t.Errorf("expected VPC to be UP at T=8")
+	}
+}
